@@ -31,4 +31,6 @@ var SpecYAML []byte
 func ModuleInit(reg registry.ModuleRegistrar) {
 	reg.RegisterWorkflow(executeGitExportGithubID, executeGitExportGithub)
 	reg.RegisterWorkflow(executeGitExportGitlabID, executeGitExportGitlab)
+	reg.RegisterWorkflow(executeGitExportBitbucketID, executeGitExportBitbucket)
+	reg.RegisterWorkflow(executeGitExportStashID, executeGitExportStash)
 }

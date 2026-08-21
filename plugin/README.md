@@ -18,6 +18,8 @@ caller, it does not replace one.
 | `pkg/migrateplugin/migrateplugin.go` | `ModuleInit` — binds workflow IDs to handlers |
 | `pkg/migrateplugin/gitexport_github.go` | github `git_export` handler |
 | `pkg/migrateplugin/gitexport_gitlab.go` | gitlab `git_export` handler |
+| `pkg/migrateplugin/gitexport_bitbucket.go` | bitbucket `git_export` handler |
+| `pkg/migrateplugin/gitexport_stash.go` | stash (Bitbucket Server) `git_export` handler |
 | `pkg/migrateplugin/client.go` | shared bearer-token `scm.Client` transport |
 | `pkg/bridge/` | shared glue: tracer, interrupt handling — reused by every handler |
 
@@ -61,9 +63,11 @@ from the standalone binary's `v*` tags, with dev builds reporting the next patch
 
 ## POC status
 
-Two commands are wired up: `execute git_export:github`, wrapping
-`../cmd/github/git.go`, and `execute git_export:gitlab`, wrapping
-`../cmd/gitlab/git.go`. Everything below is known-open, not overlooked.
+All four git-export providers are wired up: `execute git_export:github`
+(`../cmd/github/git.go`), `execute git_export:gitlab` (`../cmd/gitlab/git.go`),
+`execute git_export:bitbucket` (`../cmd/bitbucket/git.go`), and
+`execute git_export:stash` (`../cmd/stash/git.go`). Everything below is
+known-open, not overlooked.
 
 - **`execute` is a placeholder verb.** The unified CLI has a closed verb set with
   no `export`/`import`/`convert`/`migrate` in it. The shape worth arguing for is

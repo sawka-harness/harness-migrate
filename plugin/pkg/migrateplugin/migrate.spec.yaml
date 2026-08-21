@@ -89,8 +89,6 @@ commands:
       - name: no-lfs
         description: "Do NOT export LFS objects"
         is_bool: true
-      # Progress is animated only on a terminal; this forces plain lines even
-      # there. Redirected output falls back on its own.
       - name: no-progress
         description: "Print plain progress lines instead of an animated progress bar"
         is_bool: true
@@ -158,8 +156,129 @@ commands:
       - name: no-lfs
         description: "Do NOT export LFS objects"
         is_bool: true
-      # Progress is animated only on a terminal; this forces plain lines even
-      # there. Redirected output falls back on its own.
+      - name: no-progress
+        description: "Print plain progress lines instead of an animated progress bar"
+        is_bool: true
+
+  - command: execute git_export:bitbucket
+    verb: execute
+    noun: git_export
+    noun_variant: bitbucket
+    short: Export bitbucket git data (repos, pull requests, webhooks, rules) to a local folder
+    long: |
+      Reads repositories and their metadata out of a Bitbucket Cloud workspace
+      and writes them to a local folder for a later import into Harness Code.
+
+      Requires a Bitbucket token with read access to the workspace. This
+      command does not talk to Harness at all, so no Harness login is needed.
+
+      Requires the `git` and `git-lfs` binaries on PATH.
+    no_id: true
+    no_auth: true
+    handler_type: workflow
+    workflow_id: execute_git_export_bitbucket
+    # --out, --format, --json, --yaml and --raw are added to every workflow
+    # command, and --org/--project/--profile/--debug/--timeout are global, so
+    # none of those names are available here.
+    flags:
+      - name: dir
+        description: "Folder to write the export to"
+        default: harness
+      - name: bitbucket-workspace
+        description: "Bitbucket workspace to export"
+        required: true
+      - name: bitbucket-token
+        description: "Bitbucket token with read access to the workspace"
+        required: true
+      - name: bitbucket-repo
+        description: "Export only this repository instead of the whole workspace"
+      - name: bitbucket-host
+        description: "Bitbucket API base URL, for Bitbucket Server"
+      - name: resume
+        description: "Resume from the last checkpoint in the output folder"
+        is_bool: true
+      - name: no-pr
+        description: "Do NOT export pull requests and comments"
+        is_bool: true
+      - name: no-comment
+        description: "Do NOT export pull request comments"
+        is_bool: true
+      - name: no-pr-metadata
+        description: "Do NOT export pull request comments and reviewers"
+        is_bool: true
+      - name: no-webhook
+        description: "Do NOT export webhooks"
+        is_bool: true
+      - name: no-rule
+        description: "Do NOT export branch protection rules"
+        is_bool: true
+      - name: no-lfs
+        description: "Do NOT export LFS objects"
+        is_bool: true
+      - name: no-progress
+        description: "Print plain progress lines instead of an animated progress bar"
+        is_bool: true
+
+  - command: execute git_export:stash
+    verb: execute
+    noun: git_export
+    noun_variant: stash
+    short: Export bitbucket server (stash) git data (repos, pull requests, webhooks, rules) to a local folder
+    long: |
+      Reads repositories and their metadata out of a Bitbucket Server (Stash)
+      project and writes them to a local folder for a later import into
+      Harness Code.
+
+      Requires a Bitbucket Server token with read access to the project. This
+      command does not talk to Harness at all, so no Harness login is needed.
+
+      Requires the `git` and `git-lfs` binaries on PATH.
+    no_id: true
+    no_auth: true
+    handler_type: workflow
+    workflow_id: execute_git_export_stash
+    # --out, --format, --json, --yaml and --raw are added to every workflow
+    # command, and --org/--project/--profile/--debug/--timeout are global, so
+    # none of those names are available here.
+    flags:
+      - name: dir
+        description: "Folder to write the export to"
+        default: harness
+      - name: stash-host
+        description: "Bitbucket Server base URL"
+        required: true
+      - name: stash-project
+        description: "Bitbucket Server project to export"
+        required: true
+      - name: stash-token
+        description: "Bitbucket Server token with read access to the project"
+        required: true
+      - name: stash-user
+        description: "Bitbucket Server username, used to authenticate and for git clones"
+        required: true
+      - name: stash-repo
+        description: "Export only this repository instead of the whole project"
+      - name: resume
+        description: "Resume from the last checkpoint in the output folder"
+        is_bool: true
+      - name: no-pr
+        description: "Do NOT export pull requests and comments"
+        is_bool: true
+      - name: no-comment
+        description: "Do NOT export pull request comments"
+        is_bool: true
+      - name: no-pr-metadata
+        description: "Do NOT export pull request comments and reviewers"
+        is_bool: true
+      - name: no-webhook
+        description: "Do NOT export webhooks"
+        is_bool: true
+      - name: no-rule
+        description: "Do NOT export branch protection rules"
+        is_bool: true
+      - name: no-lfs
+        description: "Do NOT export LFS objects"
+        is_bool: true
       - name: no-progress
         description: "Print plain progress lines instead of an animated progress bar"
         is_bool: true

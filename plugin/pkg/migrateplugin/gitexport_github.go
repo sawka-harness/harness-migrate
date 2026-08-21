@@ -74,9 +74,7 @@ func executeGitExportGithub(ctx *cmdctx.Ctx) error {
 }
 
 // newGithubClient builds an scm client that injects the token as a bearer token,
-// matching the standalone command's transport. cmd/util.CreateClient is close
-// but takes every provider's credentials at once and uses SchemeToken; folding
-// the two together is worth doing when a second provider lands here.
+// matching the standalone command's transport.
 func newGithubClient(host, token string) (*scm.Client, error) {
 	var client *scm.Client
 	var err error
