@@ -20,18 +20,24 @@ import (
 	"github.com/harness/harness-migrate/plugin/pkg/bridge"
 )
 
-const executeGitExportBitbucketID = "execute_git_export_bitbucket"
+const migrateBitbucketWorkspaceToBundleID = "migrate_bitbucket_workspace_scm_bundle"
 
-// executeGitExportBitbucket exports a Bitbucket Cloud workspace's git data to a
-// local folder. It calls the same engine constructors as the standalone
-// `harness-migrate bitbucket git-export` command; only the front-end differs.
-func executeGitExportBitbucket(ctx *cmdctx.Ctx) error {
-	dir := cmdctx.GetString(ctx.FlagValues, "dir")
-	// bitbucket-workspace and bitbucket-token are declared required in the
-	// spec, so cobra has already rejected the run if either is missing.
-	workspace := strings.Trim(cmdctx.GetString(ctx.FlagValues, "bitbucket-workspace"), "/")
+// migrateBitbucketWorkspaceToBundle writes a Bitbucket Cloud workspace's git
+// data into a local scm bundle. It calls the same engine constructors as the
+// standalone `harness-migrate bitbucket git-export` command; only the front-end
+// differs.
+func migrateBitbucketWorkspaceToBundle(ctx *cmdctx.Ctx) error {
+	// --from is declared presence: required in the spec, so it is already
+	// non-empty; --to has no spec-level default, hence the fallback here.
+	workspace := strings.Trim(ctx.MigrateFrom, "/")
+	dir := ctx.MigrateTo
+	if dir == "" {
+		dir = defaultBundleDir
+	}
+	// bitbucket-token is declared required in the spec, so cobra has already
+	// rejected the run if it is missing.
 	token := cmdctx.GetString(ctx.FlagValues, "bitbucket-token")
-	repository := strings.Trim(cmdctx.GetString(ctx.FlagValues, "bitbucket-repo"), "/")
+	repository := strings.Trim(cmdctx.GetString(ctx.FlagValues, "repo"), "/")
 	host := cmdctx.GetString(ctx.FlagValues, "bitbucket-host")
 
 	flags := gitexporter.Flags{
@@ -70,7 +76,7 @@ func executeGitExportBitbucket(ctx *cmdctx.Ctx) error {
 	bgCtx, cancel := bridge.WithInterrupt(ctx.Context)
 	defer cancel()
 
-	hlog.Debug("starting bitbucket git-export", "workspace", workspace, "repository", repository, "dir", dir)
+	hlog.Debug("starting bitbucket_workspace:scm_bundle migration", "workspace", workspace, "repository", repository, "dir", dir)
 	return exporter.Export(bgCtx)
 }
 

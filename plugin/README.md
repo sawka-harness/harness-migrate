@@ -16,10 +16,10 @@ caller, it does not replace one.
 | `cmd/harness-migrate/main-harness-migrate.go` | plugin entrypoint (`--identity`, `--spec`, dispatch) |
 | `pkg/migrateplugin/migrate.spec.yaml` | the grammar: nouns, commands, flags |
 | `pkg/migrateplugin/migrateplugin.go` | `ModuleInit` — binds workflow IDs to handlers |
-| `pkg/migrateplugin/gitexport_github.go` | github `git_export` handler |
-| `pkg/migrateplugin/gitexport_gitlab.go` | gitlab `git_export` handler |
-| `pkg/migrateplugin/gitexport_bitbucket.go` | bitbucket `git_export` handler |
-| `pkg/migrateplugin/gitexport_stash.go` | stash (Bitbucket Server) `git_export` handler |
+| `pkg/migrateplugin/migrate_github.go` | `github_organization:scm_bundle` handler |
+| `pkg/migrateplugin/migrate_gitlab.go` | `gitlab_group:scm_bundle` handler |
+| `pkg/migrateplugin/migrate_bitbucket.go` | `bitbucket_workspace:scm_bundle` handler |
+| `pkg/migrateplugin/migrate_stash.go` | `stash_project:scm_bundle` handler |
 | `pkg/migrateplugin/client.go` | shared bearer-token `scm.Client` transport |
 | `pkg/bridge/` | shared glue: tracer, interrupt handling — reused by every handler |
 
@@ -38,7 +38,7 @@ systems share nothing.
 ```sh
 task build      # -> plugin/bin/harness-migrate
 task install    # harness install plugin plugin/bin/harness-migrate
-harness execute git_export:github --github-org myorg --github-token "$GITHUB_TOKEN"
+harness migrate github_organization:scm_bundle --from myorg --github-token "$GITHUB_TOKEN"
 ```
 
 The binary must be named `harness-<plugin-name>`, so it is also
@@ -63,23 +63,37 @@ from the standalone binary's `v*` tags, with dev builds reporting the next patch
 
 ## POC status
 
-All four git-export providers are wired up: `execute git_export:github`
-(`../cmd/github/git.go`), `execute git_export:gitlab` (`../cmd/gitlab/git.go`),
-`execute git_export:bitbucket` (`../cmd/bitbucket/git.go`), and
-`execute git_export:stash` (`../cmd/stash/git.go`). Everything below is
+All four export providers are wired up under the `migrate <from>:<to>` pair
+verb: `migrate github_organization:scm_bundle` (`../cmd/github/git.go`),
+`migrate gitlab_group:scm_bundle` (`../cmd/gitlab/git.go`),
+`migrate bitbucket_workspace:scm_bundle` (`../cmd/bitbucket/git.go`), and
+`migrate stash_project:scm_bundle` (`../cmd/stash/git.go`). Everything below is
 known-open, not overlooked.
 
-- **`execute` is a placeholder verb.** The unified CLI has a closed verb set with
-  no `export`/`import`/`convert`/`migrate` in it. The shape worth arguing for is
-  `harness export repo:github` → `harness import repo`; that needs new verbs
-  approved in core.
-- **`git_export` is a placeholder noun,** picked because it does not collide.
-  `code` already owns `repository`, and cross-plugin noun collision handling
-  (`<plugin>@<noun>`) is not implemented in core yet — a colliding spec is
-  dropped whole.
-- **Flag names are prefixed** (`--github-org`, not `--org`) because `--org`,
-  `--project`, `--profile`, `--debug`, `--timeout` are global and `--out`,
-  `--format`, `--json`, `--yaml`, `--raw` are added to every workflow command.
+- **The import half does not exist yet.** `migrate scm_bundle:repository`
+  (`../cmd/gitimport`) is what makes an exported bundle land in Harness Code, and
+  it is the point where `ctx.Auth` starts to matter. Note that `code` owns the
+  `repository` *noun*, but command identity is `verb + noun:noun_to`, so
+  `migrate scm_bundle:repository` registers cleanly as long as this spec does not
+  declare `repository` in its own `nouns:` block.
+- **`:repository` names what the import creates, not how much of it.** One bundle
+  becomes many repos, and PRs, webhooks, rules and labels are all children of a
+  repo, so nothing created falls outside the `:to` noun. The dissatisfying part
+  is that `--to` would carry a Harness *scope* rather than a repo id, which is
+  why it is `presence: none` there — account/org/project come from the profile.
+- **Credentials and endpoints keep the provider prefix** (`--github-token`, not
+  `--token`), because the noun says which *system* but not whose *credential* —
+  and in this CLI a bare `--token` reads as a Harness token, which is exactly
+  what `git-import --token` takes. Narrowing and behavior flags stay bare
+  (`--repo`, `--resume`, `--no-pr`): they mean the same thing on all four
+  providers. GitLab's `--repo` would be `--project` in GitLab's own vocabulary,
+  but `--project` is global.
+- **Globals to avoid when adding flags:** `--org`, `--project`, `--profile`,
+  `--debug`, `--timeout` are global, and `--out`, `--format`, `--json`, `--yaml`,
+  `--raw` are added to every workflow command.
+- **`--to` has no spec-level default,** so each handler falls back to `harness`
+  itself. `migrate_from`/`migrate_to` carry `label` and `presence`
+  (`required`/`optional`/`none`) but not a default value.
 - **Progress still goes through migrate's own `tracer`,** not `pkg/console`, so a
   migration doesn't look quite like the rest of `harness`. It keeps the animated
   progress bar, which core can't yet reproduce: `pkg/console` allows one animated
@@ -88,15 +102,15 @@ known-open, not overlooked.
   failures through `Stop`. `pkg/bridge` overrides only `Debug()`, routing it to
   `hlog` so nothing needs to read the host's `--debug` flag.
 - **No env-var fallbacks.** The standalone CLI accepts `github_ORG` and friends
-  via kingpin's `Envar()`; core's spec schema has no equivalent, and this is a
-  new interface rather than a compatible one, so the flags are just required.
-- **No Harness auth is used** (`no_auth: true`); git-export only talks to GitHub.
-  The import side is where `ctx.Auth` starts to matter.
+  via kingpin's `Envar()`, but never documented them, so nothing published is
+  lost. Core's spec schema has no equivalent; it can be added if asked for.
+- **No Harness auth is used** (`no_auth: true`); an export only talks to the
+  source provider. The import side is where `ctx.Auth` starts to matter.
 
-Requires core at or after `Separate embedded plugin specs from builtin specs at
-enumeration` (squash-cli 8dcacf7). Before that commit, a plugin binary loading
-its own spec registered nothing and cobra rejected every verb the host
-dispatched.
+Requires core at or after `more spec control over to/from flags for migrate`
+(squash-cli dde8ffe), which adds the `migrate` verb, `noun_to`, and the
+`migrate_from`/`migrate_to` blocks. A host binary older than that rejects
+`migrate` outright, since the verb set is closed and validated at load time.
 
 Worth pushing into core, which would let code here be deleted:
 

@@ -25,42 +25,53 @@ help_text: |
   {{nouns}}
 
 nouns:
-  - noun: git_export
-    short_desc: A local export of git data (repos, PRs, webhooks, rules) pulled out of an SCM provider.
+  - noun: scm_bundle
+    short_desc: A local bundle of git data (repos, PRs, webhooks, rules) written by a migration, ready to import into Harness Code.
+  - noun: github_organization
+    noun_aliases: [github_org]
+    short_desc: A GitHub organization, read live over the GitHub API.
+  - noun: gitlab_group
+    short_desc: A GitLab group, read live over the GitLab API.
+  - noun: bitbucket_workspace
+    short_desc: A Bitbucket Cloud workspace, read live over the Bitbucket API.
+  - noun: stash_project
+    noun_aliases: [bitbucket_server_project]
+    short_desc: A Bitbucket Server (Stash) project, read live over the Bitbucket Server API.
 
 commands:
-  - command: execute git_export:github
-    verb: execute
-    noun: git_export
-    noun_variant: github
-    short: Export github git data (repos, pull requests, webhooks, rules) to a local folder
+  - command: migrate github_organization:scm_bundle
+    verb: migrate
+    noun: github_organization
+    noun_to: scm_bundle
+    short: Migrate a GitHub organization's git data (repos, pull requests, webhooks, rules) into a local bundle
     long: |
       Reads repositories and their metadata out of a GitHub organization and
-      writes them to a local folder for a later import into Harness Code.
+      writes them to a local bundle for a later import into Harness Code.
 
-      Requires a GitHub token with read access to the org. This command does not
-      talk to Harness at all, so no Harness login is needed.
+      `--from` is the GitHub organization; `--to` is the folder to write, and
+      defaults to ./harness. Nothing lands in Harness — the `:to` endpoint is a
+      local bundle, so no Harness login is needed. Import it with
+      `harness migrate scm_bundle:repository`.
 
-      Requires the `git` and `git-lfs` binaries on PATH.
-    no_id: true
+      Requires a GitHub token with read access to the org, and the `git` and
+      `git-lfs` binaries on PATH.
     no_auth: true
     handler_type: workflow
-    workflow_id: execute_git_export_github
+    workflow_id: migrate_github_organization_scm_bundle
+    migrate_from:
+      presence: required
+      label: "GitHub organization to migrate"
+    migrate_to:
+      label: "Folder to write the bundle to (default ./harness)"
     # --out, --format, --json, --yaml and --raw are added to every workflow
     # command, and --org/--project/--profile/--debug/--timeout are global, so
     # none of those names are available here.
     flags:
-      - name: dir
-        description: "Folder to write the export to"
-        default: harness
-      - name: github-org
-        description: "GitHub organization to export"
-        required: true
       - name: github-token
         description: "GitHub token with read access to the organization"
         required: true
-      - name: github-repo
-        description: "Export only this repository instead of the whole org"
+      - name: repo
+        description: "Migrate only this repository instead of the whole org"
       - name: github-user
         description: "GitHub username, used for git clones"
       - name: github-host
@@ -93,41 +104,44 @@ commands:
         description: "Print plain progress lines instead of an animated progress bar"
         is_bool: true
 
-  - command: execute git_export:gitlab
-    verb: execute
-    noun: git_export
-    noun_variant: gitlab
-    short: Export gitlab git data (repos, pull requests, webhooks, rules) to a local folder
+  - command: migrate gitlab_group:scm_bundle
+    verb: migrate
+    noun: gitlab_group
+    noun_to: scm_bundle
+    short: Migrate a GitLab group's git data (repos, pull requests, webhooks, rules) into a local bundle
     long: |
       Reads projects and their metadata out of a GitLab group and writes them to
-      a local folder for a later import into Harness Code.
+      a local bundle for a later import into Harness Code.
 
-      Requires a GitLab token with read access to the group. This command does
-      not talk to Harness at all, so no Harness login is needed.
+      `--from` is the GitLab group; `--to` is the folder to write, and defaults
+      to ./harness. Nothing lands in Harness — the `:to` endpoint is a local
+      bundle, so no Harness login is needed. Import it with
+      `harness migrate scm_bundle:repository`.
 
-      Requires the `git` and `git-lfs` binaries on PATH.
-    no_id: true
+      Requires a GitLab token with read access to the group, and the `git` and
+      `git-lfs` binaries on PATH.
     no_auth: true
     handler_type: workflow
-    workflow_id: execute_git_export_gitlab
+    workflow_id: migrate_gitlab_group_scm_bundle
+    migrate_from:
+      presence: required
+      label: "GitLab group to migrate"
+    migrate_to:
+      label: "Folder to write the bundle to (default ./harness)"
     # --out, --format, --json, --yaml and --raw are added to every workflow
     # command, and --org/--project/--profile/--debug/--timeout are global, so
-    # none of those names are available here.
+    # none of those names are available here. GitLab calls a repository a
+    # project, but --repo matches the other three providers, and --project is
+    # global anyway.
     flags:
-      - name: dir
-        description: "Folder to write the export to"
-        default: harness
-      - name: gitlab-group
-        description: "GitLab group to export"
-        required: true
       - name: gitlab-token
         description: "GitLab token with read access to the group"
         required: true
       - name: include-subgroups
         description: "Include projects in descendant subgroups of the group"
         is_bool: true
-      - name: gitlab-project
-        description: "Export only this project instead of the whole group"
+      - name: repo
+        description: "Migrate only this project instead of the whole group"
       - name: gitlab-user
         description: "GitLab username, used for git clones"
       - name: gitlab-host
@@ -160,38 +174,39 @@ commands:
         description: "Print plain progress lines instead of an animated progress bar"
         is_bool: true
 
-  - command: execute git_export:bitbucket
-    verb: execute
-    noun: git_export
-    noun_variant: bitbucket
-    short: Export bitbucket git data (repos, pull requests, webhooks, rules) to a local folder
+  - command: migrate bitbucket_workspace:scm_bundle
+    verb: migrate
+    noun: bitbucket_workspace
+    noun_to: scm_bundle
+    short: Migrate a Bitbucket workspace's git data (repos, pull requests, webhooks, rules) into a local bundle
     long: |
       Reads repositories and their metadata out of a Bitbucket Cloud workspace
-      and writes them to a local folder for a later import into Harness Code.
+      and writes them to a local bundle for a later import into Harness Code.
 
-      Requires a Bitbucket token with read access to the workspace. This
-      command does not talk to Harness at all, so no Harness login is needed.
+      `--from` is the Bitbucket workspace; `--to` is the folder to write, and
+      defaults to ./harness. Nothing lands in Harness — the `:to` endpoint is a
+      local bundle, so no Harness login is needed. Import it with
+      `harness migrate scm_bundle:repository`.
 
-      Requires the `git` and `git-lfs` binaries on PATH.
-    no_id: true
+      Requires a Bitbucket token with read access to the workspace, and the
+      `git` and `git-lfs` binaries on PATH.
     no_auth: true
     handler_type: workflow
-    workflow_id: execute_git_export_bitbucket
+    workflow_id: migrate_bitbucket_workspace_scm_bundle
+    migrate_from:
+      presence: required
+      label: "Bitbucket workspace to migrate"
+    migrate_to:
+      label: "Folder to write the bundle to (default ./harness)"
     # --out, --format, --json, --yaml and --raw are added to every workflow
     # command, and --org/--project/--profile/--debug/--timeout are global, so
     # none of those names are available here.
     flags:
-      - name: dir
-        description: "Folder to write the export to"
-        default: harness
-      - name: bitbucket-workspace
-        description: "Bitbucket workspace to export"
-        required: true
       - name: bitbucket-token
         description: "Bitbucket token with read access to the workspace"
         required: true
-      - name: bitbucket-repo
-        description: "Export only this repository instead of the whole workspace"
+      - name: repo
+        description: "Migrate only this repository instead of the whole workspace"
       - name: bitbucket-host
         description: "Bitbucket API base URL, for Bitbucket Server"
       - name: resume
@@ -219,36 +234,37 @@ commands:
         description: "Print plain progress lines instead of an animated progress bar"
         is_bool: true
 
-  - command: execute git_export:stash
-    verb: execute
-    noun: git_export
-    noun_variant: stash
-    short: Export bitbucket server (stash) git data (repos, pull requests, webhooks, rules) to a local folder
+  - command: migrate stash_project:scm_bundle
+    verb: migrate
+    noun: stash_project
+    noun_to: scm_bundle
+    short: Migrate a Bitbucket Server (Stash) project's git data (repos, pull requests, webhooks, rules) into a local bundle
     long: |
       Reads repositories and their metadata out of a Bitbucket Server (Stash)
-      project and writes them to a local folder for a later import into
+      project and writes them to a local bundle for a later import into
       Harness Code.
 
-      Requires a Bitbucket Server token with read access to the project. This
-      command does not talk to Harness at all, so no Harness login is needed.
+      `--from` is the Bitbucket Server project; `--to` is the folder to write,
+      and defaults to ./harness. Nothing lands in Harness — the `:to` endpoint
+      is a local bundle, so no Harness login is needed. Import it with
+      `harness migrate scm_bundle:repository`.
 
-      Requires the `git` and `git-lfs` binaries on PATH.
-    no_id: true
+      Requires a Bitbucket Server token with read access to the project, and the
+      `git` and `git-lfs` binaries on PATH.
     no_auth: true
     handler_type: workflow
-    workflow_id: execute_git_export_stash
+    workflow_id: migrate_stash_project_scm_bundle
+    migrate_from:
+      presence: required
+      label: "Bitbucket Server project to migrate"
+    migrate_to:
+      label: "Folder to write the bundle to (default ./harness)"
     # --out, --format, --json, --yaml and --raw are added to every workflow
     # command, and --org/--project/--profile/--debug/--timeout are global, so
     # none of those names are available here.
     flags:
-      - name: dir
-        description: "Folder to write the export to"
-        default: harness
       - name: stash-host
         description: "Bitbucket Server base URL"
-        required: true
-      - name: stash-project
-        description: "Bitbucket Server project to export"
         required: true
       - name: stash-token
         description: "Bitbucket Server token with read access to the project"
@@ -256,8 +272,8 @@ commands:
       - name: stash-user
         description: "Bitbucket Server username, used to authenticate and for git clones"
         required: true
-      - name: stash-repo
-        description: "Export only this repository instead of the whole project"
+      - name: repo
+        description: "Migrate only this repository instead of the whole project"
       - name: resume
         description: "Resume from the last checkpoint in the output folder"
         is_bool: true

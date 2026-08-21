@@ -8,33 +8,37 @@ import (
 	"strings"
 
 	"github.com/drone/go-scm/scm"
-	scmgitlab "github.com/drone/go-scm/scm/driver/gitlab"
+	scmgithub "github.com/drone/go-scm/scm/driver/github"
 
 	"github.com/harness/cli/pkg/cmdctx"
 	"github.com/harness/cli/pkg/hlog"
 
 	"github.com/harness/harness-migrate/internal/checkpoint"
 	"github.com/harness/harness-migrate/internal/gitexporter"
-	"github.com/harness/harness-migrate/internal/migrate/gitlab"
+	"github.com/harness/harness-migrate/internal/migrate/github"
 	"github.com/harness/harness-migrate/internal/report"
 	"github.com/harness/harness-migrate/plugin/pkg/bridge"
 )
 
-const executeGitExportGitlabID = "execute_git_export_gitlab"
+const migrateGithubOrgToBundleID = "migrate_github_organization_scm_bundle"
 
-// executeGitExportGitlab exports a GitLab group's git data to a local folder. It
-// calls the same engine constructors as the standalone `harness-migrate gitlab
-// git-export` command; only the front-end differs.
-func executeGitExportGitlab(ctx *cmdctx.Ctx) error {
-	dir := cmdctx.GetString(ctx.FlagValues, "dir")
-	// gitlab-group and gitlab-token are declared required in the spec, so cobra
-	// has already rejected the run if either is missing.
-	group := strings.Trim(cmdctx.GetString(ctx.FlagValues, "gitlab-group"), "/")
-	token := cmdctx.GetString(ctx.FlagValues, "gitlab-token")
-	project := strings.Trim(cmdctx.GetString(ctx.FlagValues, "gitlab-project"), "/")
-	user := cmdctx.GetString(ctx.FlagValues, "gitlab-user")
-	host := cmdctx.GetString(ctx.FlagValues, "gitlab-host")
-	includeSubgroups := cmdctx.GetBool(ctx.FlagValues, "include-subgroups")
+// migrateGithubOrgToBundle writes a GitHub org's git data into a local scm
+// bundle. It calls the same engine constructors as the standalone
+// `harness-migrate github git-export` command; only the front-end differs.
+func migrateGithubOrgToBundle(ctx *cmdctx.Ctx) error {
+	// --from is declared presence: required in the spec, so it is already
+	// non-empty; --to has no spec-level default, hence the fallback here.
+	org := strings.Trim(ctx.MigrateFrom, "/")
+	dir := ctx.MigrateTo
+	if dir == "" {
+		dir = defaultBundleDir
+	}
+	// github-token is declared required in the spec, so cobra has already
+	// rejected the run if it is missing.
+	token := cmdctx.GetString(ctx.FlagValues, "github-token")
+	repository := strings.Trim(cmdctx.GetString(ctx.FlagValues, "repo"), "/")
+	user := cmdctx.GetString(ctx.FlagValues, "github-user")
+	host := cmdctx.GetString(ctx.FlagValues, "github-host")
 
 	flags := gitexporter.Flags{
 		NoPR:         cmdctx.GetBool(ctx.FlagValues, "no-pr"),
@@ -46,7 +50,7 @@ func executeGitExportGitlab(ctx *cmdctx.Ctx) error {
 		NoLFS:        cmdctx.GetBool(ctx.FlagValues, "no-lfs"),
 	}
 
-	client, err := newGitlabClient(host, token)
+	client, err := newGithubClient(host, token)
 	if err != nil {
 		return err
 	}
@@ -64,28 +68,28 @@ func executeGitExportGitlab(ctx *cmdctx.Ctx) error {
 	fileLogger := &gitexporter.FileLogger{Location: dir}
 	reporter := make(map[string]*report.Report)
 
-	e := gitlab.New(client, group, project, checkpointManager, fileLogger, tracer, reporter, includeSubgroups)
+	e := github.New(client, org, repository, checkpointManager, fileLogger, tracer, reporter)
 	exporter := gitexporter.NewExporter(e, dir, user, token, tracer, reporter, flags)
 
 	bgCtx, cancel := bridge.WithInterrupt(ctx.Context)
 	defer cancel()
 
-	hlog.Debug("starting gitlab git-export", "group", group, "project", project, "dir", dir)
+	hlog.Debug("starting github_organization:scm_bundle migration", "org", org, "repository", repository, "dir", dir)
 	return exporter.Export(bgCtx)
 }
 
-// newGitlabClient builds an scm client that injects the token as a bearer
-// token, matching the standalone command's transport.
-func newGitlabClient(host, token string) (*scm.Client, error) {
+// newGithubClient builds an scm client that injects the token as a bearer token,
+// matching the standalone command's transport.
+func newGithubClient(host, token string) (*scm.Client, error) {
 	var client *scm.Client
 	var err error
 	if host != "" {
-		client, err = scmgitlab.New(host)
+		client, err = scmgithub.New(host)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		client = scmgitlab.NewDefault()
+		client = scmgithub.NewDefault()
 	}
 	client.Client = oauth2BearerClient(token)
 	return client, nil

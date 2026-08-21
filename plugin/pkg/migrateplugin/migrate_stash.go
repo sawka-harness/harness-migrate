@@ -21,21 +21,26 @@ import (
 	"github.com/harness/harness-migrate/plugin/pkg/bridge"
 )
 
-const executeGitExportStashID = "execute_git_export_stash"
+const migrateStashProjectToBundleID = "migrate_stash_project_scm_bundle"
 
-// executeGitExportStash exports a Bitbucket Server (Stash) project's git data
-// to a local folder. It calls the same engine constructors as the standalone
-// `harness-migrate stash git-export` command; only the front-end differs.
-func executeGitExportStash(ctx *cmdctx.Ctx) error {
-	dir := cmdctx.GetString(ctx.FlagValues, "dir")
-	// stash-host, stash-project, stash-token and stash-user are declared
-	// required in the spec, so cobra has already rejected the run if any is
-	// missing.
+// migrateStashProjectToBundle writes a Bitbucket Server (Stash) project's git
+// data into a local scm bundle. It calls the same engine constructors as the
+// standalone `harness-migrate stash git-export` command; only the front-end
+// differs.
+func migrateStashProjectToBundle(ctx *cmdctx.Ctx) error {
+	// --from is declared presence: required in the spec, so it is already
+	// non-empty; --to has no spec-level default, hence the fallback here.
+	project := strings.Trim(ctx.MigrateFrom, "/")
+	dir := ctx.MigrateTo
+	if dir == "" {
+		dir = defaultBundleDir
+	}
+	// stash-host, stash-token and stash-user are declared required in the
+	// spec, so cobra has already rejected the run if any is missing.
 	host := cmdctx.GetString(ctx.FlagValues, "stash-host")
-	project := strings.Trim(cmdctx.GetString(ctx.FlagValues, "stash-project"), "/")
 	token := cmdctx.GetString(ctx.FlagValues, "stash-token")
 	user := cmdctx.GetString(ctx.FlagValues, "stash-user")
-	repository := strings.Trim(cmdctx.GetString(ctx.FlagValues, "stash-repo"), "/")
+	repository := strings.Trim(cmdctx.GetString(ctx.FlagValues, "repo"), "/")
 
 	flags := gitexporter.Flags{
 		NoPR:         cmdctx.GetBool(ctx.FlagValues, "no-pr"),
@@ -77,6 +82,6 @@ func executeGitExportStash(ctx *cmdctx.Ctx) error {
 	bgCtx, cancel := bridge.WithInterrupt(ctx.Context)
 	defer cancel()
 
-	hlog.Debug("starting stash git-export", "project", project, "repository", repository, "dir", dir)
+	hlog.Debug("starting stash_project:scm_bundle migration", "project", project, "repository", repository, "dir", dir)
 	return exporter.Export(bgCtx)
 }

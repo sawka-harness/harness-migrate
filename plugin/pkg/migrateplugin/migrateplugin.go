@@ -26,11 +26,15 @@ const SpecFileName = "migrate.spec.yaml"
 //go:embed migrate.spec.yaml
 var SpecYAML []byte
 
+// defaultBundleDir is where a migration writes its scm bundle when --to is
+// omitted, matching the standalone CLI's default output folder.
+const defaultBundleDir = "harness"
+
 // ModuleInit registers the migrate workflows. Commands are declared in
 // migrate.spec.yaml.
 func ModuleInit(reg registry.ModuleRegistrar) {
-	reg.RegisterWorkflow(executeGitExportGithubID, executeGitExportGithub)
-	reg.RegisterWorkflow(executeGitExportGitlabID, executeGitExportGitlab)
-	reg.RegisterWorkflow(executeGitExportBitbucketID, executeGitExportBitbucket)
-	reg.RegisterWorkflow(executeGitExportStashID, executeGitExportStash)
+	reg.RegisterWorkflow(migrateGithubOrgToBundleID, migrateGithubOrgToBundle)
+	reg.RegisterWorkflow(migrateGitlabGroupToBundleID, migrateGitlabGroupToBundle)
+	reg.RegisterWorkflow(migrateBitbucketWorkspaceToBundleID, migrateBitbucketWorkspaceToBundle)
+	reg.RegisterWorkflow(migrateStashProjectToBundleID, migrateStashProjectToBundle)
 }
