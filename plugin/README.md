@@ -5,9 +5,11 @@ binary drives. It is a [Harness unified CLI](https://github.com/harness/cli)
 plugin: a separate binary the `harness` host execs, with its command grammar
 declared in [migrate.spec.yaml](pkg/migrateplugin/migrate.spec.yaml).
 
-Nothing under `../internal` or `../types` changes. The handlers here call the
+No behavior under `../internal` or `../types` changes. The handlers here call the
 same constructors the kingpin `run()` bodies in `../cmd` call — this adds a
-caller, it does not replace one.
+caller, it does not replace one. The single edit outside this directory is
+`gitexporter.getZipFilePath` becoming exported as `ZipFilePath`, so the export
+and the import share one rule for where a bundle's zip lives.
 
 ## Layout
 
@@ -20,6 +22,7 @@ caller, it does not replace one.
 | `pkg/migrateplugin/migrate_gitlab.go` | `gitlab_group:scm_bundle` handler |
 | `pkg/migrateplugin/migrate_bitbucket.go` | `bitbucket_workspace:scm_bundle` handler |
 | `pkg/migrateplugin/migrate_stash.go` | `stash_project:scm_bundle` handler |
+| `pkg/migrateplugin/migrate_import.go` | `scm_bundle:repository` handler — the import half |
 | `pkg/migrateplugin/client.go` | shared bearer-token `scm.Client` transport |
 | `pkg/bridge/` | shared glue: tracer, interrupt handling — reused by every handler |
 
@@ -39,6 +42,7 @@ systems share nothing.
 task build      # -> plugin/bin/harness-migrate
 task install    # harness install plugin plugin/bin/harness-migrate
 harness migrate github_organization:scm_bundle --from myorg --github-token "$GITHUB_TOKEN"
+harness migrate scm_bundle:repository --from harness
 ```
 
 The binary must be named `harness-<plugin-name>`, so it is also
@@ -63,24 +67,55 @@ from the standalone binary's `v*` tags, with dev builds reporting the next patch
 
 ## POC status
 
-All four export providers are wired up under the `migrate <from>:<to>` pair
-verb: `migrate github_organization:scm_bundle` (`../cmd/github/git.go`),
+Both phases are wired up under the `migrate <from>:<to>` pair verb — four
+exports: `migrate github_organization:scm_bundle` (`../cmd/github/git.go`),
 `migrate gitlab_group:scm_bundle` (`../cmd/gitlab/git.go`),
-`migrate bitbucket_workspace:scm_bundle` (`../cmd/bitbucket/git.go`), and
-`migrate stash_project:scm_bundle` (`../cmd/stash/git.go`). Everything below is
+`migrate bitbucket_workspace:scm_bundle` (`../cmd/bitbucket/git.go`),
+`migrate stash_project:scm_bundle` (`../cmd/stash/git.go`); and the import,
+`migrate scm_bundle:repository` (`../cmd/gitimporter`). Everything below is
 known-open, not overlooked.
 
-- **The import half does not exist yet.** `migrate scm_bundle:repository`
-  (`../cmd/gitimport`) is what makes an exported bundle land in Harness Code, and
-  it is the point where `ctx.Auth` starts to matter. Note that `code` owns the
-  `repository` *noun*, but command identity is `verb + noun:noun_to`, so
-  `migrate scm_bundle:repository` registers cleanly as long as this spec does not
-  declare `repository` in its own `nouns:` block.
 - **`:repository` names what the import creates, not how much of it.** One bundle
   becomes many repos, and PRs, webhooks, rules and labels are all children of a
-  repo, so nothing created falls outside the `:to` noun. The dissatisfying part
-  is that `--to` would carry a Harness *scope* rather than a repo id, which is
-  why it is `presence: none` there — account/org/project come from the profile.
+  repo, so nothing created falls outside the `:to` noun. `code` owns the
+  `repository` *noun*, but command identity is `verb + noun:noun_to`, so the pair
+  registers cleanly as long as this spec does not declare `repository` in its own
+  `nouns:` block.
+- **The import has no `--to`** (`presence: none`): its destination is a Harness
+  *scope*, not a repo id, so it comes from the profile plus the global
+  `--org`/`--project`, and is rendered into the `account/org/project` path the
+  engine takes as `--space`. `repository` is `multi_level`, so an org- or
+  account-scoped space is legitimate; only a project without an org is rejected.
+- **Foreign noun aliases don't survive plugin dispatch.** The host resolves
+  `migrate scm_bundle:repo` (via `code`'s `repo` alias) and execs this binary with
+  that spelling, but this process loads only its own spec, so it has no `repository`
+  noun to source aliases from and rejects it. Aliases on nouns declared *here*
+  (`github_org`, `bitbucket_server_project`) work fine. Core would have to
+  canonicalize the pair before exec'ing a plugin.
+- **The import needs an API-token profile.** `internal/harness` authenticates with
+  `x-api-key`, which an SSO profile's bearer token can't fill, so the handler
+  checks `Auth.PATToken` and errors with a login hint. It checks the token rather
+  than `Auth.AuthType`, which core leaves unset in `HARNESS_API_KEY` mode.
+- **`--from` on the import takes the folder or the zip.** A file is the zip, which
+  is all the standalone CLI accepted; a folder is an export's output folder, and
+  the zip inside is located with `gitexporter.ZipFilePath` — the same rule that
+  wrote it. An export leaves nothing else in that folder, so `--from harness` is
+  unambiguous and mirrors the export's `--to harness`. The resolved path is opened
+  as a zip before the import announces itself, so the four failure modes (missing
+  path, folder without a `harness.zip`, unreadable zip, valid but empty) each
+  report themselves by name instead of surfacing as `zip: not a valid zip file`
+  from inside the engine.
+- **`--gitness` is dropped.** Importing into a Gitness instance needs an endpoint
+  and a raw `Authorization` header that no Harness profile describes, so that
+  target belongs to the standalone binary.
+- **`--endpoint`, `--token` and `--space` are dropped** in favour of the resolved
+  profile — that substitution is most of the point of being a plugin. The
+  standalone `--skip-pr`/`--skip-label`/`--skip-webhook`/`--skip-rule` aliases are
+  gone too: spec flags have no alias field, and `--no-*` matches the exports.
+- **Numeric flags are strings.** `spec.Flag` is only string, bool or array, so
+  `--file-size-limit` and `--batch-size` are declared with string `default:`s and
+  parsed in the handler, which errors on a non-number rather than letting
+  `cmdctx.GetInt` silently yield a batch size of zero.
 - **Credentials and endpoints keep the provider prefix** (`--github-token`, not
   `--token`), because the noun says which *system* but not whose *credential* —
   and in this CLI a bare `--token` reads as a Harness token, which is exactly

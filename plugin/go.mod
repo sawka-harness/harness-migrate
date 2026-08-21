@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	github.com/drone/go-scm v1.38.9
+	github.com/google/uuid v1.6.0
 	github.com/harness/cli v0.0.0
 	github.com/harness/harness-migrate v0.0.0
 	github.com/spf13/cobra v1.10.2
@@ -38,7 +39,6 @@ require (
 	github.com/go-git/go-billy/v6 v6.0.0-20250627091229-31e2a16eef30 // indirect
 	github.com/go-git/go-git/v6 v6.0.0-20250728093604-6aaf1933ecab // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gotidy/ptr v1.4.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jedib0t/go-pretty/v6 v6.8.3 // indirect

@@ -20,6 +20,12 @@ help_text: |
   commands. Exports are checkpointed: re-run with `--resume` to pick up where an
   interrupted run left off.
 
+      harness migrate github_organization:scm_bundle --from myorg --github-token ...
+      harness migrate scm_bundle:repository --from harness
+
+  The export writes `./harness/harness.zip` and needs no Harness login; the
+  import reads it and creates repositories in the current profile's scope.
+
   ### Nouns
 
   {{nouns}}
@@ -229,6 +235,68 @@ commands:
         is_bool: true
       - name: no-lfs
         description: "Do NOT export LFS objects"
+        is_bool: true
+      - name: no-progress
+        description: "Print plain progress lines instead of an animated progress bar"
+        is_bool: true
+
+  - command: migrate scm_bundle:repository
+    verb: migrate
+    noun: scm_bundle
+    noun_to: repository
+    short: Import a local bundle written by an export into Harness Code repositories
+    long: |
+      Reads a bundle produced by one of the `migrate <provider>:scm_bundle`
+      commands and creates the repositories, pull requests, comments, webhooks,
+      branch rules and labels it describes in Harness Code.
+
+      `--from` is the bundle: pass the folder an export wrote (`./harness`) or the
+      zip inside it. There is no `--to` — the destination is the scope of the
+      current profile, so the repositories are created under the account, org and
+      project that `harness auth setscope` or the global `--org`/`--project`
+      flags select.
+
+      Requires an API token profile and the `git` and `git-lfs` binaries on PATH.
+    handler_type: workflow
+    workflow_id: migrate_scm_bundle_repository
+    migrate_from:
+      presence: required
+      label: "Bundle folder or zip file to import (e.g. ./harness)"
+    migrate_to:
+      presence: none
+    # --out, --format, --json, --yaml and --raw are added to every workflow
+    # command, and --org/--project/--profile/--debug/--timeout are global, so
+    # none of those names are available here. --org and --project are what
+    # select the destination scope, which is why there is no --to.
+    flags:
+      - name: repo
+        description: "Import only this repository from the bundle (e.g. myorg/myrepo)"
+      - name: skip-users
+        description: "Map users that don't exist in Harness onto the token's own user instead of failing"
+        is_bool: true
+      - name: file-size-limit
+        description: "Temporarily raise the git push file size limit, in bytes, for large repositories"
+        default: "100000000"
+      - name: batch-size
+        description: "Pull requests to import per request; lower it if the API returns 413"
+        default: "100"
+      - name: no-pr
+        description: "Do NOT import pull requests and comments"
+        is_bool: true
+      - name: no-webhook
+        description: "Do NOT import webhooks"
+        is_bool: true
+      - name: no-rule
+        description: "Do NOT import branch protection rules"
+        is_bool: true
+      - name: no-label
+        description: "Do NOT import labels"
+        is_bool: true
+      - name: no-git
+        description: "Skip all git operations and import only pull requests, for topping up a repository that is already migrated"
+        is_bool: true
+      - name: trace
+        description: "Log every Harness API request and response"
         is_bool: true
       - name: no-progress
         description: "Print plain progress lines instead of an animated progress bar"
