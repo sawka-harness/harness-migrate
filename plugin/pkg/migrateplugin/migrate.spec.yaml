@@ -1,0 +1,165 @@
+spec_version: 1
+module_type: plugin
+module_desc: Migrate repos, pull requests and pipelines into Harness from another SCM
+help_text: |
+  ## Migration (migrate)
+
+  Migrates source-control and CI data from another provider into Harness. This
+  plugin wraps the harness-migrate engine (https://github.com/harness/harness-migrate).
+
+  ### Two phases, not one
+
+  Migration is deliberately two steps with a zip file on disk between them:
+
+  1. **Export** — read everything out of the source provider (repos, pull
+     requests, comments, webhooks, branch rules, labels, LFS objects) into a
+     local folder.
+  2. **Import** — push that folder into Harness Code.
+
+  The phases are often separated by hours of runtime, so they are separate
+  commands. Exports are checkpointed: re-run with `--resume` to pick up where an
+  interrupted run left off.
+
+  ### Nouns
+
+  {{nouns}}
+
+nouns:
+  - noun: git_export
+    short_desc: A local export of git data (repos, PRs, webhooks, rules) pulled out of an SCM provider.
+
+commands:
+  - command: execute git_export:github
+    verb: execute
+    noun: git_export
+    noun_variant: github
+    short: Export github git data (repos, pull requests, webhooks, rules) to a local folder
+    long: |
+      Reads repositories and their metadata out of a GitHub organization and
+      writes them to a local folder for a later import into Harness Code.
+
+      Requires a GitHub token with read access to the org. This command does not
+      talk to Harness at all, so no Harness login is needed.
+
+      Requires the `git` and `git-lfs` binaries on PATH.
+    no_id: true
+    no_auth: true
+    handler_type: workflow
+    workflow_id: execute_git_export_github
+    # --out, --format, --json, --yaml and --raw are added to every workflow
+    # command, and --org/--project/--profile/--debug/--timeout are global, so
+    # none of those names are available here.
+    flags:
+      - name: dir
+        description: "Folder to write the export to"
+        default: harness
+      - name: github-org
+        description: "GitHub organization to export"
+        required: true
+      - name: github-token
+        description: "GitHub token with read access to the organization"
+        required: true
+      - name: github-repo
+        description: "Export only this repository instead of the whole org"
+      - name: github-user
+        description: "GitHub username, used for git clones"
+      - name: github-host
+        description: "GitHub API base URL, for GitHub Enterprise"
+      - name: resume
+        description: "Resume from the last checkpoint in the output folder"
+        is_bool: true
+      - name: no-pr
+        description: "Do NOT export pull requests and comments"
+        is_bool: true
+      - name: no-comment
+        description: "Do NOT export pull request comments"
+        is_bool: true
+      - name: no-pr-metadata
+        description: "Do NOT export pull request comments and reviewers"
+        is_bool: true
+      - name: no-webhook
+        description: "Do NOT export webhooks"
+        is_bool: true
+      - name: no-rule
+        description: "Do NOT export branch protection rules"
+        is_bool: true
+      - name: no-label
+        description: "Do NOT export labels"
+        is_bool: true
+      - name: no-lfs
+        description: "Do NOT export LFS objects"
+        is_bool: true
+      # Progress is animated only on a terminal; this forces plain lines even
+      # there. Redirected output falls back on its own.
+      - name: no-progress
+        description: "Print plain progress lines instead of an animated progress bar"
+        is_bool: true
+
+  - command: execute git_export:gitlab
+    verb: execute
+    noun: git_export
+    noun_variant: gitlab
+    short: Export gitlab git data (repos, pull requests, webhooks, rules) to a local folder
+    long: |
+      Reads projects and their metadata out of a GitLab group and writes them to
+      a local folder for a later import into Harness Code.
+
+      Requires a GitLab token with read access to the group. This command does
+      not talk to Harness at all, so no Harness login is needed.
+
+      Requires the `git` and `git-lfs` binaries on PATH.
+    no_id: true
+    no_auth: true
+    handler_type: workflow
+    workflow_id: execute_git_export_gitlab
+    # --out, --format, --json, --yaml and --raw are added to every workflow
+    # command, and --org/--project/--profile/--debug/--timeout are global, so
+    # none of those names are available here.
+    flags:
+      - name: dir
+        description: "Folder to write the export to"
+        default: harness
+      - name: gitlab-group
+        description: "GitLab group to export"
+        required: true
+      - name: gitlab-token
+        description: "GitLab token with read access to the group"
+        required: true
+      - name: include-subgroups
+        description: "Include projects in descendant subgroups of the group"
+        is_bool: true
+      - name: gitlab-project
+        description: "Export only this project instead of the whole group"
+      - name: gitlab-user
+        description: "GitLab username, used for git clones"
+      - name: gitlab-host
+        description: "GitLab API base URL, for self-managed GitLab"
+      - name: resume
+        description: "Resume from the last checkpoint in the output folder"
+        is_bool: true
+      - name: no-pr
+        description: "Do NOT export pull requests and comments"
+        is_bool: true
+      - name: no-comment
+        description: "Do NOT export pull request comments"
+        is_bool: true
+      - name: no-pr-metadata
+        description: "Do NOT export pull request comments and reviewers"
+        is_bool: true
+      - name: no-webhook
+        description: "Do NOT export webhooks"
+        is_bool: true
+      - name: no-rule
+        description: "Do NOT export branch protection rules"
+        is_bool: true
+      - name: no-label
+        description: "Do NOT export labels"
+        is_bool: true
+      - name: no-lfs
+        description: "Do NOT export LFS objects"
+        is_bool: true
+      # Progress is animated only on a terminal; this forces plain lines even
+      # there. Redirected output falls back on its own.
+      - name: no-progress
+        description: "Print plain progress lines instead of an animated progress bar"
+        is_bool: true
