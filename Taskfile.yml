@@ -143,6 +143,15 @@ tasks:
     cmds:
       - ./bin/{{.BINARY}} --spec
 
+  # Deliberately a thin shim over the script rather than a task that builds the
+  # six platform archives itself: the release build must also be runnable from a
+  # bare CI container with no task binary, so the script is the real thing and
+  # this is the convenience entry point.
+  release:
+    desc: 'Build a migrate/vX.Y.Z release into plugin/dist: task release -- migrate/v0.1.0 [--publish]'
+    cmds:
+      - ./plugin/scripts/release-migrate.sh {{.CLI_ARGS}}
+
   tidy:
     desc: Tidy the plugin module's dependencies
     dir: plugin
@@ -152,4 +161,4 @@ tasks:
   clean:
     desc: Remove plugin build output and the dev home
     cmds:
-      - rm -rf plugin/bin {{.DEVHOME}}
+      - rm -rf plugin/bin plugin/dist {{.DEVHOME}}
