@@ -22,7 +22,7 @@ vars:
   DEVHOME: '{{.ROOT_DIR}}/plugin/devhome'
 
   # The host CLI, used as the installer. Override when it is not on PATH:
-  #   task install HARNESS=../squash-cli/bin/harness
+  #   task install HARNESS=../cli/bin/harness
   # A relative path resolves from the repo root — see the install/dev tasks.
   HARNESS: '{{default "harness" (env "HARNESS")}}'
 

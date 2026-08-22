@@ -69,10 +69,10 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-// The unified CLI is consumed from a sibling checkout for now. It is publicly
-// go-gettable (github.com/harness/cli v0.1.21+), so this can become a plain
+// The unified CLI is consumed from a sibling checkout of github.com/harness/cli
+// for now. It is publicly go-gettable (v0.1.21+), so this can become a plain
 // version requirement once the plugin tracks released versions of core.
-replace github.com/harness/cli => ../../squash-cli
+replace github.com/harness/cli => ../../cli
 
 replace github.com/harness/harness-migrate => ../
 

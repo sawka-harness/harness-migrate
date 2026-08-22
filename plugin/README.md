@@ -27,9 +27,11 @@ and the import share one rule for where a bundle's zip lives.
 | `pkg/bridge/` | shared glue: tracer, interrupt handling — reused by every handler |
 
 Its own Go module, because the parent is on Go 1.23 and `github.com/harness/cli`
-requires 1.26. `github.com/harness/cli` is consumed from a sibling `../../squash-cli`
-checkout for now; it is publicly go-gettable, so that `replace` can become a
-plain version requirement later.
+requires 1.26. `github.com/harness/cli` is consumed from a sibling checkout for
+now — clone [github.com/harness/cli](https://github.com/harness/cli) into
+`../cli` (relative to the repo root, `../../cli` from `plugin/`); it is
+publicly go-gettable, so that `replace` can become a plain version requirement
+later.
 
 ## Build and install
 
@@ -58,7 +60,7 @@ task identity    # the JSON the host reads at install time
 task spec        # the grammar YAML the host stores at install time
 ```
 
-If the host CLI isn't on your PATH: `task install HARNESS=../squash-cli/bin/harness`
+If the host CLI isn't on your PATH: `task install HARNESS=../cli/bin/harness`
 (relative paths resolve from the repo root, not from `plugin/`).
 
 Version stamping follows core's convention — a `migrate/v*` tag series separate
@@ -143,7 +145,7 @@ known-open, not overlooked.
   source provider. The import side is where `ctx.Auth` starts to matter.
 
 Requires core at or after `more spec control over to/from flags for migrate`
-(squash-cli dde8ffe), which adds the `migrate` verb, `noun_to`, and the
+(harness/cli dde8ffe), which adds the `migrate` verb, `noun_to`, and the
 `migrate_from`/`migrate_to` blocks. A host binary older than that rejects
 `migrate` outright, since the verb set is closed and validated at load time.
 
