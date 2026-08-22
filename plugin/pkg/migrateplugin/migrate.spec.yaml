@@ -26,6 +26,13 @@ help_text: |
   The export writes `./harness/harness.zip` and needs no Harness login; the
   import reads it and creates repositories in the current profile's scope.
 
+  Because the bundle sits on disk between the two, it can be edited. When the
+  emails in the source provider are not the emails those people have in Harness,
+  rewrite them before importing — otherwise the import stops on a user it cannot
+  find:
+
+      harness update scm_bundle:users harness --user-mapping users.json
+
   ### Nouns
 
   {{nouns}}
@@ -67,8 +74,10 @@ commands:
     migrate_from:
       presence: required
       label: "GitHub organization to migrate"
+      id_label: "<org>"
     migrate_to:
       label: "Folder to write the bundle to (default ./harness)"
+      id_label: "<folder>"
     # --out, --format, --json, --yaml and --raw are added to every workflow
     # command, and --org/--project/--profile/--debug/--timeout are global, so
     # none of those names are available here.
@@ -132,8 +141,10 @@ commands:
     migrate_from:
       presence: required
       label: "GitLab group to migrate"
+      id_label: "<group>"
     migrate_to:
       label: "Folder to write the bundle to (default ./harness)"
+      id_label: "<folder>"
     # --out, --format, --json, --yaml and --raw are added to every workflow
     # command, and --org/--project/--profile/--debug/--timeout are global, so
     # none of those names are available here. GitLab calls a repository a
@@ -202,8 +213,10 @@ commands:
     migrate_from:
       presence: required
       label: "Bitbucket workspace to migrate"
+      id_label: "<workspace>"
     migrate_to:
       label: "Folder to write the bundle to (default ./harness)"
+      id_label: "<folder>"
     # --out, --format, --json, --yaml and --raw are added to every workflow
     # command, and --org/--project/--profile/--debug/--timeout are global, so
     # none of those names are available here.
@@ -240,6 +253,45 @@ commands:
         description: "Print plain progress lines instead of an animated progress bar"
         is_bool: true
 
+  - command: update scm_bundle:users
+    verb: update
+    noun: scm_bundle
+    noun_variant: users
+    short: Rewrite the email addresses in a local bundle from a mapping file
+    long: |
+      Replaces email addresses throughout a bundle — pull request authors,
+      commenters, reviewers and branch rule members — with the ones a mapping
+      file names, and rewrites the bundle in place.
+
+      Run it between the export and the import, when the emails a source
+      provider reports are not the ones the same people have in Harness. The
+      import matches users by email, so unmapped addresses are what make
+      `migrate scm_bundle:repository` stop on a missing user.
+
+      The id is the bundle: pass the folder an export wrote (`./harness`) or the
+      zip inside it, the same as the import's `--from`. `--user-mapping` is a
+      JSON object of old address to new:
+
+          {"old@source.example": "new@harness.example"}
+
+      Nothing lands in Harness and no login is needed — the only effect is on
+      the bundle on disk. The original is replaced once the rewrite succeeds, so
+      an interrupted run leaves it untouched.
+    no_auth: true
+    handler_type: workflow
+    workflow_id: update_scm_bundle_users
+    # A bundle is named by a path, so the id holds slashes; without
+    # id_allow_slash the framework rejects anything but a bare name.
+    id_label: "<folder-or-zip>"
+    id_allow_slash: true
+    flags:
+      - name: user-mapping
+        description: "Path to a JSON file mapping old email addresses to new ones"
+        required: true
+      - name: no-progress
+        description: "Print plain progress lines instead of an animated progress bar"
+        is_bool: true
+
   - command: migrate scm_bundle:repository
     verb: migrate
     noun: scm_bundle
@@ -262,6 +314,7 @@ commands:
     migrate_from:
       presence: required
       label: "Bundle folder or zip file to import (e.g. ./harness)"
+      id_label: "<folder-or-zip>"
     migrate_to:
       presence: none
     # --out, --format, --json, --yaml and --raw are added to every workflow
@@ -325,8 +378,10 @@ commands:
     migrate_from:
       presence: required
       label: "Bitbucket Server project to migrate"
+      id_label: "<project>"
     migrate_to:
       label: "Folder to write the bundle to (default ./harness)"
+      id_label: "<folder>"
     # --out, --format, --json, --yaml and --raw are added to every workflow
     # command, and --org/--project/--profile/--debug/--timeout are global, so
     # none of those names are available here.

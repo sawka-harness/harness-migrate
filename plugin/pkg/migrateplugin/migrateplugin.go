@@ -38,4 +38,5 @@ func ModuleInit(reg registry.ModuleRegistrar) {
 	reg.RegisterWorkflow(migrateBitbucketWorkspaceToBundleID, migrateBitbucketWorkspaceToBundle)
 	reg.RegisterWorkflow(migrateStashProjectToBundleID, migrateStashProjectToBundle)
 	reg.RegisterWorkflow(migrateBundleToRepositoryID, migrateBundleToRepository)
+	reg.RegisterWorkflow(updateBundleUsersID, updateBundleUsers)
 }

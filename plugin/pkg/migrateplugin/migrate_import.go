@@ -92,25 +92,27 @@ func migrateBundleToRepository(ctx *cmdctx.Ctx) error {
 	return importer.Import(bgCtx)
 }
 
-// resolveBundleZip turns --from into the zip path the importer reads.
+// resolveBundleZip turns however a command named a bundle — the import's --from,
+// the id on `update scm_bundle:users` — into the zip path the engine reads.
 //
 // A file is the zip itself, which is all the standalone CLI accepted. A folder is
 // an export's output folder, and the zip inside it is found with the same rule the
 // export used to write it — an export leaves nothing else behind, so
 // `--from harness` mirrors the export's `--to harness`. Either way the result is
-// opened before the import announces itself, so a wrong path fails naming the
-// path rather than as "not a valid zip file" from deep in the engine.
-func resolveBundleZip(from string) (string, error) {
-	path := filepath.Clean(from)
+// opened before the caller announces itself, so a wrong path fails naming the
+// path rather than as "not a valid zip file" from deep in the engine. Messages
+// here name no flag, since the callers spell the bundle differently.
+func resolveBundleZip(bundle string) (string, error) {
+	path := filepath.Clean(bundle)
 	info, err := os.Stat(path)
 	if err != nil {
-		return "", fmt.Errorf("cannot read bundle %q: %w", from, err)
+		return "", fmt.Errorf("cannot read bundle %q: %w", bundle, err)
 	}
 	if info.IsDir() {
 		path = gitexporter.ZipFilePath(path)
 		if _, err := os.Stat(path); err != nil {
-			return "", fmt.Errorf("folder %q holds no %s; point --from at the zip file itself if it goes by another name: %w",
-				from, gitexporter.ZipFileName, err)
+			return "", fmt.Errorf("folder %q holds no %s; name the zip file itself if it goes by another name: %w",
+				bundle, gitexporter.ZipFileName, err)
 		}
 	}
 	zr, err := zip.OpenReader(path)

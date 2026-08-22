@@ -23,6 +23,7 @@ and the import share one rule for where a bundle's zip lives.
 | `pkg/migrateplugin/migrate_bitbucket.go` | `bitbucket_workspace:scm_bundle` handler |
 | `pkg/migrateplugin/migrate_stash.go` | `stash_project:scm_bundle` handler |
 | `pkg/migrateplugin/migrate_import.go` | `scm_bundle:repository` handler — the import half |
+| `pkg/migrateplugin/update_users.go` | `update scm_bundle:users` handler — rewrite emails in a bundle |
 | `pkg/migrateplugin/client.go` | shared bearer-token `scm.Client` transport |
 | `pkg/bridge/` | shared glue: tracer, interrupt handling — reused by every handler |
 
@@ -44,6 +45,7 @@ systems share nothing.
 task build      # -> plugin/bin/harness-migrate
 task install    # harness install plugin plugin/bin/harness-migrate
 harness migrate github_organization:scm_bundle --from myorg --github-token "$GITHUB_TOKEN"
+harness update scm_bundle:users harness --user-mapping users.json   # optional
 harness migrate scm_bundle:repository --from harness
 ```
 
@@ -74,7 +76,11 @@ exports: `migrate github_organization:scm_bundle` (`../cmd/github/git.go`),
 `migrate gitlab_group:scm_bundle` (`../cmd/gitlab/git.go`),
 `migrate bitbucket_workspace:scm_bundle` (`../cmd/bitbucket/git.go`),
 `migrate stash_project:scm_bundle` (`../cmd/stash/git.go`); and the import,
-`migrate scm_bundle:repository` (`../cmd/gitimporter`). Everything below is
+`migrate scm_bundle:repository` (`../cmd/gitimporter`). The one command that
+edits a bundle between the two phases is ported too: `update scm_bundle:users`
+(`../cmd/users`). That is every code-related command in `../cmd`; what is left
+there is pipeline conversion (`circle`, `drone`, `jenkinsxml`, `travis`,
+`terraform`, `cloudbuild`, and each provider's `convert`). Everything below is
 known-open, not overlooked.
 
 - **`:repository` names what the import creates, not how much of it.** One bundle
@@ -98,15 +104,37 @@ known-open, not overlooked.
   `x-api-key`, which an SSO profile's bearer token can't fill, so the handler
   checks `Auth.PATToken` and errors with a login hint. It checks the token rather
   than `Auth.AuthType`, which core leaves unset in `HARNESS_API_KEY` mode.
-- **`--from` on the import takes the folder or the zip.** A file is the zip, which
+- **A bundle is named by a folder or a zip, everywhere.** A file is the zip, which
   is all the standalone CLI accepted; a folder is an export's output folder, and
   the zip inside is located with `gitexporter.ZipFilePath` — the same rule that
   wrote it. An export leaves nothing else in that folder, so `--from harness` is
   unambiguous and mirrors the export's `--to harness`. The resolved path is opened
-  as a zip before the import announces itself, so the four failure modes (missing
+  as a zip before the caller announces itself, so the four failure modes (missing
   path, folder without a `harness.zip`, unreadable zip, valid but empty) each
   report themselves by name instead of surfacing as `zip: not a valid zip file`
-  from inside the engine.
+  from inside the engine. `resolveBundleZip` is shared by the import's `--from`
+  and the id on `update scm_bundle:users`, so its messages name no flag.
+- **`update scm_bundle:users` is a core verb on an artifact noun,** not a third
+  member of the `migrate` pair. Nothing moves between endpoints — one bundle is
+  rewritten in place — and `verbs.md` already lists `update` among the artifact
+  tier's verbs. The variant names the aspect (`users`), not the action, so it
+  doesn't read as "update … update-users"; `scm_bundle` is declared in this
+  spec's `nouns:` block, so the plugin owns it outright and a non-pair verb on it
+  registers without help from core.
+- **`id_allow_slash: true` is mandatory on it.** The bundle is named by a path, and
+  `validateIdParts` rejects any id containing `/` unless a command opts out. Without
+  it `./out/harness.zip` fails before the handler runs.
+- **The bundle is rewritten in place, with no `--out` alternative.** The host adds
+  `--out` to every workflow command for output redirection, so it can't name a
+  destination zip. That matches the standalone command, which also replaced its
+  `--zipFilePath`. The engine renames over the original only after the rewrite
+  succeeds, so an interrupt leaves the bundle intact — which is just as well,
+  because `users.Updater.Update` accepts a `context.Context` and never reads it:
+  `bridge.WithInterrupt` cannot stop a rewrite in flight.
+- **The rewrite's scratch space is `./harness-updated` in the process CWD** —
+  `internal/users` hardcodes it and `os.RemoveAll`s it on the way out, so a folder
+  of that name in the caller's directory is clobbered and deleted. Left alone
+  because the fix belongs in `internal/users`, which this port doesn't touch.
 - **`--gitness` is dropped.** Importing into a Gitness instance needs an endpoint
   and a raw `Authorization` header that no Harness profile describes, so that
   target belongs to the standalone binary.
