@@ -84,7 +84,7 @@ tasks:
     desc: Install the plugin into your real ~/.harness via `harness install plugin`
     deps: [build]
     cmds:
-      - '{{.HARNESS}} install plugin plugin/bin/{{.BINARY}}'
+      - '{{.HARNESS}} install plugin ./plugin/bin/{{.BINARY}}'
 
   dev:
     desc: Install the plugin into plugin/devhome, leaving ~/.harness alone
@@ -92,7 +92,7 @@ tasks:
     cmds:
       # The real installer path: `install plugin` runs the identity gate and
       # captures the spec via --spec, so this exercises what a user gets.
-      - HARNESS_CLI_HOME={{.DEVHOME}} {{.HARNESS}} install plugin plugin/bin/{{.BINARY}}
+      - HARNESS_CLI_HOME={{.DEVHOME}} {{.HARNESS}} install plugin ./plugin/bin/{{.BINARY}}
       - echo "Run with HARNESS_CLI_HOME={{.DEVHOME}} {{.HARNESS}} ..."
 
   check:
