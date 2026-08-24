@@ -1,6 +1,6 @@
 module github.com/harness/harness-migrate/plugin
 
-go 1.26.0
+go 1.26.7
 
 require (
 	github.com/drone/go-scm v1.38.9
