@@ -1,11 +1,13 @@
 spec_version: 1
 module_type: plugin
-module_desc: Migrate repos, pull requests and pipelines into Harness from another SCM
+module_desc: Migrate repositories and their pull requests into Harness Code from another SCM
 help_text: |
   ## Migration (migrate)
 
-  Migrates source-control and CI data from another provider into Harness. This
-  plugin wraps the harness-migrate engine (https://github.com/harness/harness-migrate).
+  Migrates git repositories and their metadata from another source-control
+  provider into Harness Code. This plugin wraps the harness-migrate engine
+  (https://github.com/harness/harness-migrate). It does not migrate pipelines
+  or any other CI data.
 
   ### Two phases, not one
 

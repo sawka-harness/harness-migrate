@@ -31,7 +31,7 @@ func main() {
 	rootcmd.MaybeCheckSpecs(reg)
 	root := &cobra.Command{
 		Use:   "harness-" + migrateplugin.ModuleName,
-		Short: "Harness migration CLI (import repos and pipelines into Harness)",
+		Short: "Harness migration CLI (import repositories and pull requests into Harness Code)",
 	}
 	rootcmd.SetupAndExecutePluginRootCmd(root, reg, migrateplugin.ModuleName, migrateplugin.SpecYAML)
 }
