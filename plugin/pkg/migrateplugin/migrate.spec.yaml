@@ -33,6 +33,14 @@ help_text: |
 
       harness update scm_bundle:users harness --user-mapping users.json
 
+  If an email doesn't match a Harness user, the import stops. Fix it first
+  with `update scm_bundle:users`, or pass --skip-users on
+  `migrate scm_bundle:repository` to continue anyway — unmapped pull requests,
+  comments and branch rule members are then credited to the importing
+  profile's account instead. Commit authors always come from the git objects
+  the export wrote, never from the importing identity. Use a service account
+  profile to avoid unmapped history being credited to you personally.
+
   ### Nouns
 
   {{nouns}}
@@ -308,6 +316,15 @@ commands:
       project that `harness auth setscope` or the global `--org`/`--project`
       flags select.
 
+      If a pull request author, commenter or branch rule member's email
+      doesn't match a Harness user, the import stops. Fix it first with
+      `update scm_bundle:users`, or pass --skip-users to continue anyway —
+      unmapped pull requests, comments and branch rule members are then
+      credited to the profile's own account instead. Commit authors always
+      come from the git objects the export wrote, never from the importing
+      identity. Use a service account profile to avoid unmapped history being
+      credited to you personally.
+
       Requires an API token profile and the `git` and `git-lfs` binaries on PATH.
     handler_type: workflow
     workflow_id: migrate_scm_bundle_repository
@@ -325,7 +342,7 @@ commands:
       - name: repo
         description: "Import only this repository from the bundle (e.g. myorg/myrepo)"
       - name: skip-users
-        description: "Map users that don't exist in Harness onto the token's own user instead of failing"
+        description: "Attribute pull requests and comments from unmapped users to the profile's own account instead of failing the import"
         is_bool: true
       - name: file-size-limit
         description: "Temporarily raise the git push file size limit, in bytes, for large repositories"

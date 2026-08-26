@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/harness/cli/pkg/auth"
+	"github.com/harness/cli/pkg/client"
 	"github.com/harness/cli/pkg/cmdctx"
 	"github.com/harness/cli/pkg/hlog"
 
@@ -41,13 +42,11 @@ func migrateBundleToRepository(ctx *cmdctx.Ctx) error {
 	if err != nil {
 		return err
 	}
-	// harness.Client authenticates with an x-api-key header, which only a PAT or
-	// SAT can fill; an SSO session's bearer token is not interchangeable. Test
-	// the token rather than AuthType, which is left unset in HARNESS_API_KEY mode.
+	// SSO sessions have no PAT. Testing PATToken directly (rather than AuthType)
+	// also covers HARNESS_API_KEY mode, where AuthType is left unset.
 	if ctx.Auth.PATToken == "" {
-		return errors.New("importing needs an API token: the migration engine authenticates with x-api-key, " +
-			"which an SSO session cannot provide. Run 'harness auth login' with an API token (without --sso), " +
-			"or set HARNESS_API_KEY.")
+		return errors.New("import doesn't support SSO sessions — run 'harness auth login' with an API token " +
+			"(no --sso), or set HARNESS_API_KEY")
 	}
 
 	repository := strings.Trim(cmdctx.GetString(ctx.FlagValues, "repo"), "/")
@@ -71,6 +70,26 @@ func migrateBundleToRepository(ctx *cmdctx.Ctx) error {
 		PRBatchSize:   int(batchSize),
 	}
 
+	// Printed directly, ahead of the tracer: the progress bar renders a blank
+	// spinner frame to stderr the moment it's constructed, with no trailing
+	// newline, so whatever prints next (on either stream) lands glued to that
+	// frame. Announcing identity before the tracer exists avoids the collision.
+	identity, isSAT := resolveIdentity(ctx)
+	kind := "user"
+	if isSAT {
+		kind = "service account"
+	}
+	accountName := resolveAccountName(ctx)
+	fmt.Printf("Importing into %s\n", spaceDisplay(ctx.Auth, accountName))
+	fmt.Printf("Authenticating as %s (%s)\n", identity, kind)
+	fmt.Println("Commit history, including authors, remains intact.")
+	if flags.SkipUsers {
+		fmt.Println("Unmapped pull request, comment and branch-rule member authors will be attributed to this identity (--skip-users).")
+	} else {
+		fmt.Printf("The import stops on any pull request author, commenter or branch-rule member whose email isn't a Harness user.\n")
+		fmt.Printf("    Pass --skip-users to attribute those to this identity instead.\n\n")
+	}
+
 	tracer := bridge.NewTracer(cmdctx.GetBool(ctx.FlagValues, "no-progress"))
 	defer tracer.Close()
 
@@ -88,7 +107,7 @@ func migrateBundleToRepository(ctx *cmdctx.Ctx) error {
 	defer cancel()
 
 	hlog.Debug("starting scm_bundle:repository migration", "zip", zipPath, "space", space, "repository", repository)
-	tracer.Log("importing %s into %s with id: %s", zipPath, space, requestID)
+	tracer.Log("importing %s with id: %s", zipPath, requestID)
 	return importer.Import(bgCtx)
 }
 
@@ -142,6 +161,85 @@ func harnessSpace(a *auth.ResolvedAuth) (string, error) {
 		parts = append(parts, a.ProjectID)
 	}
 	return strings.Join(parts, "/"), nil
+}
+
+// resolveIdentity looks up who the importing token authenticates as, so the
+// import can announce whose account unmapped pull requests and comments will
+// be attributed to before it creates anything. Best-effort: a failed lookup
+// falls back to a generic label rather than blocking the import over it.
+func resolveIdentity(ctx *cmdctx.Ctx) (identity string, isSAT bool) {
+	cl := client.New(ctx)
+	if auth.TokenType(ctx.Auth.PATToken) == auth.TokenKindSAT {
+		result, _, err := cl.PostRaw("/ng/api/token/validate", nil, ctx.Auth.PATToken, "text/plain")
+		if err != nil {
+			return "service account", true
+		}
+		return identityDisplay(jsonStringAt(result, "data", "username"), jsonStringAt(result, "data", "email"), "service account"), true
+	}
+	result, _, err := cl.Get("/ng/api/user/currentUser", nil)
+	if err != nil {
+		return "current user", false
+	}
+	return identityDisplay(jsonStringAt(result, "data", "name"), jsonStringAt(result, "data", "email"), "current user"), false
+}
+
+// identityDisplay renders a resolved name/email pair for the header, quoting
+// the name the same way spaceDisplay quotes the account name. Falls back to
+// the bare email, then to fallback, as either field may be missing.
+func identityDisplay(name, email, fallback string) string {
+	switch {
+	case name != "" && email != "":
+		return fmt.Sprintf("%q (%s)", name, email)
+	case email != "":
+		return email
+	case name != "":
+		return fmt.Sprintf("%q", name)
+	default:
+		return fallback
+	}
+}
+
+// resolveAccountName looks up the destination account's display name for the
+// header. Best-effort: a failed lookup falls back to the account ID rather
+// than blocking the import over it.
+func resolveAccountName(ctx *cmdctx.Ctx) string {
+	result, _, err := client.New(ctx).Get("/ng/api/accounts/"+ctx.Auth.AccountID, nil)
+	if err != nil {
+		return ctx.Auth.AccountID
+	}
+	if name := jsonStringAt(result, "data", "name"); name != "" {
+		return name
+	}
+	return ctx.Auth.AccountID
+}
+
+// spaceDisplay renders the destination path for the header, substituting the
+// resolved account name for the account ID it leads with.
+func spaceDisplay(a *auth.ResolvedAuth, accountName string) string {
+	first := a.AccountID
+	if accountName != "" && accountName != a.AccountID {
+		first = fmt.Sprintf("%q (%s)", accountName, a.AccountID)
+	}
+	parts := []string{first}
+	if a.OrgID != "" {
+		parts = append(parts, a.OrgID)
+	}
+	if a.ProjectID != "" {
+		parts = append(parts, a.ProjectID)
+	}
+	return strings.Join(parts, "/")
+}
+
+func jsonStringAt(v any, keys ...string) string {
+	for _, k := range keys {
+		m, ok := v.(map[string]any)
+		if !ok {
+			return ""
+		}
+		v = m[k]
+	}
+	s, _ := v.(string)
+	return s
 }
 
 // int64Flag parses a numeric flag. Spec flags are only ever strings or bools, so
