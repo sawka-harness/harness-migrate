@@ -69,7 +69,7 @@ Version stamping follows core's convention — a `migrate/v*` tag series separat
 from the standalone binary's `v*` tags, with dev builds reporting the next patch
 (`0.1.0-dev` until the first tag exists). Override with `task build PLUGIN_VERSION=0.1.0`.
 
-## POC status
+## Status
 
 Both phases are wired up under the `migrate <from>:<to>` pair verb — four
 exports: `migrate github_organization:scm_bundle` (`../cmd/github/git.go`),
@@ -83,12 +83,6 @@ there is pipeline conversion (`circle`, `drone`, `jenkinsxml`, `travis`,
 `terraform`, `cloudbuild`, and each provider's `convert`). Everything below is
 known-open, not overlooked.
 
-- **`:repository` names what the import creates, not how much of it.** One bundle
-  becomes many repos, and PRs, webhooks, rules and labels are all children of a
-  repo, so nothing created falls outside the `:to` noun. `code` owns the
-  `repository` *noun*, but command identity is `verb + noun:noun_to`, so the pair
-  registers cleanly as long as this spec does not declare `repository` in its own
-  `nouns:` block.
 - **The import has no `--to`** (`presence: none`): its destination is a Harness
   *scope*, not a repo id, so it comes from the profile plus the global
   `--org`/`--project`, and is rendered into the `account/org/project` path the
@@ -114,13 +108,6 @@ known-open, not overlooked.
   report themselves by name instead of surfacing as `zip: not a valid zip file`
   from inside the engine. `resolveBundleZip` is shared by the import's `--from`
   and the id on `update scm_bundle:users`, so its messages name no flag.
-- **`update scm_bundle:users` is a core verb on an artifact noun,** not a third
-  member of the `migrate` pair. Nothing moves between endpoints — one bundle is
-  rewritten in place — and `verbs.md` already lists `update` among the artifact
-  tier's verbs. The variant names the aspect (`users`), not the action, so it
-  doesn't read as "update … update-users"; `scm_bundle` is declared in this
-  spec's `nouns:` block, so the plugin owns it outright and a non-pair verb on it
-  registers without help from core.
 - **`id_allow_slash: true` is mandatory on it.** The bundle is named by a path, and
   `validateIdParts` rejects any id containing `/` unless a command opts out. Without
   it `./out/harness.zip` fails before the handler runs.
@@ -171,19 +158,3 @@ known-open, not overlooked.
   lost. Core's spec schema has no equivalent; it can be added if asked for.
 - **No Harness auth is used** (`no_auth: true`); an export only talks to the
   source provider. The import side is where `ctx.Auth` starts to matter.
-
-Requires core at or after `more spec control over to/from flags for migrate`
-(harness/cli dde8ffe), which adds the `migrate` verb, `noun_to`, and the
-`migrate_from`/`migrate_to` blocks. A host binary older than that rejects
-`migrate` outright, since the verb set is closed and validated at load time.
-
-Worth pushing into core, which would let code here be deleted:
-
-- **Cancel on SIGINT/SIGTERM in the host.** Core installs no signal handling at
-  all, so `pkg/bridge.WithInterrupt` exists only so an interrupted export writes
-  its checkpoint. The host builds `ctx.Context`; graceful shutdown shouldn't be
-  per-plugin opt-in.
-- **Nestable, concurrent stages in `pkg/console`,** with an exported neutral end
-  alongside `Success`/`Fail`. That's what would let this drop `internal/tracer`.
-- **`hlog.DebugEnabled()`.** `--debug` is a `BoolFunc` that calls
-  `hlog.SetDebug()` and stores nothing, so the state is unreadable.
