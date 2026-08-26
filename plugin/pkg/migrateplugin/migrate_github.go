@@ -71,11 +71,8 @@ func migrateGithubOrgToBundle(ctx *cmdctx.Ctx) error {
 	e := github.New(client, org, repository, checkpointManager, fileLogger, tracer, reporter)
 	exporter := gitexporter.NewExporter(e, dir, user, token, tracer, reporter, flags)
 
-	bgCtx, cancel := bridge.WithInterrupt(ctx.Context)
-	defer cancel()
-
 	hlog.Debug("starting github_organization:scm_bundle migration", "org", org, "repository", repository, "dir", dir)
-	return exporter.Export(bgCtx)
+	return exporter.Export(ctx.Context)
 }
 
 // newGithubClient builds an scm client that injects the token as a bearer token,

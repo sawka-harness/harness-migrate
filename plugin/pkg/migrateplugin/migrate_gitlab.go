@@ -72,11 +72,8 @@ func migrateGitlabGroupToBundle(ctx *cmdctx.Ctx) error {
 	e := gitlab.New(client, group, project, checkpointManager, fileLogger, tracer, reporter, includeSubgroups)
 	exporter := gitexporter.NewExporter(e, dir, user, token, tracer, reporter, flags)
 
-	bgCtx, cancel := bridge.WithInterrupt(ctx.Context)
-	defer cancel()
-
 	hlog.Debug("starting gitlab_group:scm_bundle migration", "group", group, "project", project, "dir", dir)
-	return exporter.Export(bgCtx)
+	return exporter.Export(ctx.Context)
 }
 
 // newGitlabClient builds an scm client that injects the token as a bearer

@@ -73,11 +73,8 @@ func migrateBitbucketWorkspaceToBundle(ctx *cmdctx.Ctx) error {
 	// authenticating with an app token rather than a real account.
 	exporter := gitexporter.NewExporter(e, dir, "x-token-auth", token, tracer, reporter, flags)
 
-	bgCtx, cancel := bridge.WithInterrupt(ctx.Context)
-	defer cancel()
-
 	hlog.Debug("starting bitbucket_workspace:scm_bundle migration", "workspace", workspace, "repository", repository, "dir", dir)
-	return exporter.Export(bgCtx)
+	return exporter.Export(ctx.Context)
 }
 
 // newBitbucketClient builds an scm client that injects the token as a bearer

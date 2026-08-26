@@ -79,9 +79,6 @@ func migrateStashProjectToBundle(ctx *cmdctx.Ctx) error {
 	e := stash.New(client, project, repository, checkpointManager, fileLogger, tracer, reporter)
 	exporter := gitexporter.NewExporter(e, dir, user, token, tracer, reporter, flags)
 
-	bgCtx, cancel := bridge.WithInterrupt(ctx.Context)
-	defer cancel()
-
 	hlog.Debug("starting stash_project:scm_bundle migration", "project", project, "repository", repository, "dir", dir)
-	return exporter.Export(bgCtx)
+	return exporter.Export(ctx.Context)
 }

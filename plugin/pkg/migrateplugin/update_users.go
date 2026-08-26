@@ -32,12 +32,6 @@ func updateBundleUsers(ctx *cmdctx.Ctx) error {
 	tracer := bridge.NewTracer(cmdctx.GetBool(ctx.FlagValues, "no-progress"))
 	defer tracer.Close()
 
-	// The engine takes a context but never reads it, so this cannot cancel a
-	// rewrite in flight. It is here because the bundle is only replaced by a
-	// rename at the very end: an interrupt leaves the original intact.
-	bgCtx, cancel := bridge.WithInterrupt(ctx.Context)
-	defer cancel()
-
 	hlog.Debug("starting scm_bundle:users update", "zip", zipPath, "mapping", mapping)
-	return users.NewUpdater(mapping, zipPath, tracer).Update(bgCtx)
+	return users.NewUpdater(mapping, zipPath, tracer).Update(ctx.Context)
 }

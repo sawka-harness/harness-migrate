@@ -103,12 +103,9 @@ func migrateBundleToRepository(ctx *cmdctx.Ctx) error {
 		flags, tracer, reporter,
 	)
 
-	bgCtx, cancel := bridge.WithInterrupt(ctx.Context)
-	defer cancel()
-
 	hlog.Debug("starting scm_bundle:repository migration", "zip", zipPath, "space", space, "repository", repository)
 	tracer.Log("importing %s with id: %s", zipPath, requestID)
-	return importer.Import(bgCtx)
+	return importer.Import(ctx.Context)
 }
 
 // resolveBundleZip turns however a command named a bundle — the import's --from,
