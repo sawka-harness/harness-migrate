@@ -4,8 +4,8 @@
 package migrateplugin
 
 import (
-	"github.com/harness/cli/pkg/cmdctx"
-	"github.com/harness/cli/pkg/hlog"
+	"github.com/harness/cli/v3/pkg/cmdctx"
+	"github.com/harness/cli/v3/pkg/hlog"
 
 	"github.com/harness/harness-migrate/internal/users"
 	"github.com/harness/harness-migrate/plugin/pkg/bridge"

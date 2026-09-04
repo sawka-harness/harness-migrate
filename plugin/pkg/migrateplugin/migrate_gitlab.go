@@ -10,8 +10,8 @@ import (
 	"github.com/drone/go-scm/scm"
 	scmgitlab "github.com/drone/go-scm/scm/driver/gitlab"
 
-	"github.com/harness/cli/pkg/cmdctx"
-	"github.com/harness/cli/pkg/hlog"
+	"github.com/harness/cli/v3/pkg/cmdctx"
+	"github.com/harness/cli/v3/pkg/hlog"
 
 	"github.com/harness/harness-migrate/internal/checkpoint"
 	"github.com/harness/harness-migrate/internal/gitexporter"

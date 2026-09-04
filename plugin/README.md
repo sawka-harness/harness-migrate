@@ -27,12 +27,9 @@ and the import share one rule for where a bundle's zip lives.
 | `pkg/migrateplugin/client.go` | shared bearer-token `scm.Client` transport |
 | `pkg/bridge/` | shared glue: tracer, interrupt handling — reused by every handler |
 
-Its own Go module, because the parent is on Go 1.23 and `github.com/harness/cli`
-requires 1.26. `github.com/harness/cli` is consumed from a sibling checkout for
-now — clone [github.com/harness/cli](https://github.com/harness/cli) into
-`../cli` (relative to the repo root, `../../cli` from `plugin/`); it is
-publicly go-gettable, so that `replace` can become a plain version requirement
-later.
+Its own Go module, because the parent is on Go 1.23 and `github.com/harness/cli/v3`
+requires 1.26. `github.com/harness/cli/v3` is a plain version requirement,
+pulled from its published tags like any other dependency.
 
 ## Build and install
 

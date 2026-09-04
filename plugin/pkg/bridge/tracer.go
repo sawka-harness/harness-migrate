@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/harness/cli/pkg/console"
-	"github.com/harness/cli/pkg/hlog"
+	"github.com/harness/cli/v3/pkg/console"
+	"github.com/harness/cli/v3/pkg/hlog"
 
 	"github.com/harness/harness-migrate/internal/tracer"
 )

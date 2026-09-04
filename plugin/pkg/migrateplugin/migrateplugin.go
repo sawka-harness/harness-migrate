@@ -9,7 +9,7 @@ package migrateplugin
 import (
 	_ "embed"
 
-	"github.com/harness/cli/pkg/registry"
+	"github.com/harness/cli/v3/pkg/registry"
 )
 
 // ModuleName is the plugin name. It fixes the installed binary name to

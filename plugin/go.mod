@@ -5,13 +5,13 @@ go 1.26.7
 require (
 	github.com/drone/go-scm v1.38.9
 	github.com/google/uuid v1.6.0
-	github.com/harness/cli v0.0.0
+	github.com/harness/cli/v3 v3.7.0
 	github.com/harness/harness-migrate v0.0.0
 	github.com/spf13/cobra v1.10.2
 )
 
 require (
-	charm.land/bubbletea/v2 v2.0.8 // indirect
+	charm.land/bubbletea/v2 v2.0.9 // indirect
 	charm.land/lipgloss/v2 v2.0.6 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -48,10 +48,11 @@ require (
 	github.com/matoous/go-nanoid v1.5.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-runewidth v0.0.24 // indirect
+	github.com/mattn/go-runewidth v0.0.27 // indirect
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/pjbgf/sha1cd v0.4.0 // indirect
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/schollz/progressbar/v3 v3.13.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
@@ -68,11 +69,6 @@ require (
 	golang.org/x/text v0.41.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
-
-// The unified CLI is consumed from a sibling checkout of github.com/harness/cli
-// for now. It is publicly go-gettable (v0.1.21+), so this can become a plain
-// version requirement once the plugin tracks released versions of core.
-replace github.com/harness/cli => ../../cli
 
 replace github.com/harness/harness-migrate => ../
 
