@@ -61,17 +61,12 @@ if [ -n "$PUBLISH" ]; then
     [ -z "$(git status --porcelain)" ] || error "working tree has local changes — publishing must build from a clean checkout of $TAG"
 fi
 
-# go.mod replaces github.com/harness/cli with a sibling checkout, so the build
-# silently depends on it being there. Fail on that up front rather than midway
-# through the platform loop with a go resolution error.
-[ -d ../../cli ] || error "sibling checkout ../../cli (github.com/harness/cli) is missing — go.mod replaces core with it"
-
 VERSION="${TAG#migrate/}"  # v0.1.0
 VER="${VERSION#v}"         # 0.1.0
 BUILD_TIME="$(date -u +%Y%m%d%H%MZ)"
 # hbase lives in core; the version it reports is what the host records at
 # install time and compares against on upgrade. No "v" prefix — see Taskfile.yml.
-LDFLAGS="-s -w -X github.com/harness/cli/pkg/hbase.Version=${VER} -X github.com/harness/cli/pkg/hbase.BuildTime=${BUILD_TIME}"
+LDFLAGS="-s -w -X github.com/harness/cli/v3/pkg/hbase.Version=${VER} -X github.com/harness/cli/v3/pkg/hbase.BuildTime=${BUILD_TIME}"
 
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
