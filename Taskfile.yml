@@ -33,36 +33,19 @@ vars:
   # The plugin has its own tag series, prefixed so it does not collide with the
   # standalone binary's v* tags — migrate/v0.1.0, mirroring core's har/v0.9.0.
   # Dev builds report the *next* patch after the newest such tag, which is what
-  # core's getversion --next --prefix=har/ does; with no tags yet, 0.1.0.
-  #
-  # This shell reimplements that tool. Once core publishes a module path Go can
-  # fetch, drop the whole block for the real thing — same semantics, one line,
-  # no local checkout needed (go run needs no go.mod entry, and getversion reads
-  # `git tag` from the working directory, so it sees this repo's tags):
-  #
-  #   sh: echo "$(go run github.com/harness/cli/v3/cmd/getversion@latest --next --prefix=migrate/)-dev"
+  # core's getversion --next --prefix=migrate/ does. go run needs no go.mod
+  # entry, and getversion reads `git tag` from the working directory, so it
+  # sees this repo's tags.
   PLUGIN_VERSION:
     sh: |
       if [ -n "$PLUGIN_VERSION" ]; then echo "$PLUGIN_VERSION"; exit 0; fi
-      # -v:refname is git's version-aware sort, so v0.10.0 beats v0.9.0.
-      tag=$(git tag --list '{{.PLUGIN}}/v*' --sort=-v:refname 2>/dev/null | head -n 1)
-      if [ -z "$tag" ]; then echo "0.1.0-dev"; exit 0; fi
-      v=${tag#{{.PLUGIN}}/v}
-      core=${v%%-*}
-      major=${core%%.*}; rest=${core#*.}; minor=${rest%%.*}; patch=${rest#*.}
-      # A plain X.Y.Z tag means that version shipped, so aim at the next patch.
-      # A pre-release tag means we are already working toward X.Y.Z — keep it.
-      [ "$v" = "$core" ] && patch=$((patch + 1))
-      echo "$major.$minor.$patch-dev"
+      echo "$(go run github.com/harness/cli/v3/cmd/getversion@v3.7.0 --next --prefix=migrate/)-dev"
   BUILD_TIME:
     sh: date -u +%Y%m%d%H%MZ
 
-  # hbase lives in core, so this path follows core's module path. It becomes
-  # github.com/harness/cli/v3/pkg/hbase if and when core publishes a v3 with a
-  # matching module directive — today its v3.x tags are not go-gettable.
   LDFLAGS: >-
-    -X github.com/harness/cli/pkg/hbase.Version={{.PLUGIN_VERSION}}
-    -X github.com/harness/cli/pkg/hbase.BuildTime={{.BUILD_TIME}}
+    -X github.com/harness/cli/v3/pkg/hbase.Version={{.PLUGIN_VERSION}}
+    -X github.com/harness/cli/v3/pkg/hbase.BuildTime={{.BUILD_TIME}}
 
 tasks:
   default:
